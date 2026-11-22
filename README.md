@@ -370,27 +370,6 @@ Built into the design rather than bolted on:
 
 ---
 
-## Testing
-
-```bash
-pytest                       # 241 tests
-ruff check src tests         # clean
-```
-
-The suite covers the encoder contract for all five encoders, dataset round trips
-(including CSV at full float precision), leakage-free splitting, Pareto ranking,
-search strategies, registry persistence and determinism, report formats, the CLI
-end to end, and the security properties above. `tests/test_workflow.py` walks the
-full developer workflow, including bit-for-bit reproduction of a stored
-experiment. `tests/test_public_api.py` enforces the boundary described above — the
-documented names must exist, nothing else may leak, and importing the package must
-not pull in an optional dependency — while `tests/test_readme.py` executes every
-code block in this file, so the documentation is always verified against the code.
-
----
-
----
-
 ## License
 
 MIT. See `LICENSE`.
