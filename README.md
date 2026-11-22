@@ -313,14 +313,59 @@ What this project does for that decision:
   fingerprint, the seed, and the resolved parameters, so an encoding that looked
   good can be regenerated bit-for-bit later.
 
-What it does **not** do, and this matters before anyone draws a conclusion about
-silicon: it does not target any specific processor's instruction set, does not
-run any vendor toolchain, and does not estimate energy per synaptic event. The
+### Why the event count is the number that matters
+
+On an event-driven accelerator, a neuron that does not fire costs nothing: the
+silicon is idle until a spike arrives. Energy therefore scales with the number
+of synaptic events, not with the sampling rate of the sensor. `dt_ms` is the
+knob that connects the two, and the search space restricts it to the discrete
+values a hardware timer can actually generate:
+
+| `dt_ms` | frames per 0.25 s | synaptic events | events / s |
+|---|---|---|---|
+| 0.5 | 500 | 935 | 3 740 |
+| 1.0 | 250 | 632 | 2 528 |
+| 2.0 | 125 | 317 | 1 268 |
+| 5.0 | 50 | 124 | 496 |
+
+That is a **7.5× spread in event count from one parameter**, measured on the
+same window with the same encoder — and it is the difference between a design
+that fits a microamp budget and one that does not. The optimiser searches this
+axis alongside accuracy, so the output is not "the most accurate encoding" but
+"the cheapest encoding that still meets your accuracy floor".
+
+### Exporting to a target
+
+```python
+from sensor2spike import build_encoder, export_event_frames
+from sensor2spike.demo import generate_demo_dataset
+
+dataset = generate_demo_dataset(n_trials=4, seed=11)
+window = dataset.to_windows(250).samples[0]        # (250 samples, 4 range bins)
+
+encoder = build_encoder("delta", dt_ms=1.0)
+spikes = encoder.fit(window, fs=dataset.sampling_frequency).transform(
+    window, fs=dataset.sampling_frequency
+)
+export_event_frames(spikes, "delta_frames.npz")    # (250, 8) uint8 + provenance
+```
+
+The archive holds `frames` (binary, `time_steps × n_neurons`), `dt`, channel
+names and a JSON record of the encoder and parameters that produced it. It is
+deliberately format-neutral: the mapping from these frames onto a particular
+accelerator's neuron array is supplied by that accelerator's own compiler, which
+is the component that knows its neuron budget, connectivity limits and event
+encoding. What this fixes is the *representation and the provenance* — so the
+compiler is not left guessing how the data was made.
+
+### What this does not do
+
+It does not target any specific processor's instruction set, does not run a
+vendor toolchain, and does not estimate energy per synaptic event. The
 `compute_cost` objective is a spike-and-step proxy for ranking encoders against
-each other — it is not a measurement of joules on any device. Claims about a
-particular chip's power and accuracy belong to that chip's own published
-benchmarks, and the way to get one is to export the frames, compile them with the
-vendor SDK, and measure.
+each other — it is not a measurement of joules on any device. Getting a real
+power number means exporting the frames, compiling them for the intended part,
+and measuring on that part.
 
 Read in that light, the honest description of this repository is: **the front
 half of a neuromorphic sensing pipeline, with the encoding choice made
