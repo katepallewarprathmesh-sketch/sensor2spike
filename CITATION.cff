@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use Sensor2Spike in academic work, please cite it as below."
+title: "Sensor2Spike"
+abstract: >-
+  A local-first Python toolkit for turning multichannel sensor recordings into
+  spike trains and measuring which encoder configuration is worth running on a
+  spiking neural network.
+type: software
+authors:
+  - family-names: Katepallewar
+    given-names: Prathmesh
+    alias: katepallewarprathmesh-sketch
+repository-code: "https://github.com/katepallewarprathmesh-sketch/sensor2spike"
+url: "https://github.com/katepallewarprathmesh-sketch/sensor2spike"
+license: MIT
+keywords:
+  - spiking neural networks
+  - neuromorphic
+  - spike encoding
+  - event-based sensing
+version: 0.1.0
+date-released: "2026-11-22"
