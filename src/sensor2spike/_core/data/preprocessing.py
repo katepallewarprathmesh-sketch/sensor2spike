@@ -18,9 +18,55 @@ from ..contracts import SensorDataset
 from ..exceptions import ConfigurationError
 from ..utils.validation import reject_unknown_keys, require_choice, require_range
 
-__all__ = ["PreprocessConfig", "preprocess"]
+__all__ = ["NormalizationStats", "PreprocessConfig", "preprocess"]
 
 _NORMALIZATION_MODES = ("none", "minmax", "zscore")
+
+
+@dataclass(frozen=True)
+class NormalizationStats:
+    """Statistics that turn the normalisation into a fixed, reusable transform.
+
+    ``offset`` and ``scale`` are per-channel arrays, so applying the same
+    object to any split produces a transform fitted on the training data
+    alone — which is what keeps a held-out split honest.
+    """
+
+    mode: str
+    offset: np.ndarray | None = None
+    scale: np.ndarray | None = None
+
+    @classmethod
+    def fit(cls, data: np.ndarray, mode: str) -> NormalizationStats:
+        values = np.asarray(data, dtype=np.float64)
+        if values.ndim == 1:
+            values = values.reshape(-1, 1)
+        if mode == "none":
+            return cls(mode="none")
+        if mode == "minmax":
+            offset = values.min(axis=0, keepdims=True)
+            span = values.max(axis=0, keepdims=True) - offset
+            scale = np.where(span < 1e-12, 1.0, span)
+            return cls(mode="minmax", offset=offset, scale=scale)
+        if mode == "zscore":
+            offset = values.mean(axis=0, keepdims=True)
+            scale = np.where(values.std(axis=0, keepdims=True) < 1e-12, 1.0,
+                             values.std(axis=0, keepdims=True))
+            return cls(mode="zscore", offset=offset, scale=scale)
+        raise ConfigurationError(f"Unknown normalization mode {mode!r}.")
+
+    def transform(self, data: np.ndarray) -> np.ndarray:
+        if self.mode == "none":
+            return data
+        assert self.offset is not None and self.scale is not None
+        return (data - self.offset) / self.scale
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "offset": None if self.offset is None else self.offset.ravel().tolist(),
+            "scale": None if self.scale is None else self.scale.ravel().tolist(),
+        }
 
 
 @dataclass(frozen=True)
@@ -43,6 +89,16 @@ class PreprocessConfig:
     resample_hz:
         Target sample rate.  Uses polyphase resampling with an anti-aliasing
         filter, so decimation is safe.
+
+    Notes
+    -----
+    Normalisation statistics must never be estimated on data that also appears
+    in the test split: that leaks test information into the transform and makes
+    every downstream accuracy optimistic.  Use :meth:`fit` on the training
+    dataset and :meth:`apply` on each split (or let
+    :class:`ExperimentRunner` do it for you).  The module-level
+    :func:`preprocess` still exists for exploratory work on a single recording,
+    but it fits on whatever it is given.
     """
 
     enabled: bool = True
@@ -84,9 +140,39 @@ class PreprocessConfig:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    # ------------------------------------------------------- train-only scaling
+    def fit(self, train_data: np.ndarray) -> NormalizationStats:
+        """Estimate the normalisation statistics from *training* data only.
 
-def preprocess(dataset: SensorDataset, config: PreprocessConfig | Mapping[str, Any] | None = None) -> SensorDataset:
+        Returns an immutable :class:`NormalizationStats` that
+        :meth:`apply` can reuse on the test split, so the test set never
+        influences its own scaling.
+        """
+        return NormalizationStats.fit(train_data, self.normalize)
+
+    def apply(self, dataset: SensorDataset, stats: NormalizationStats | None) -> SensorDataset:
+        """Apply the pipeline, using pre-fitted normalisation statistics.
+
+        Unlike :func:`preprocess`, this never re-estimates statistics from
+        ``dataset``, so the same transform is applied to train and test.
+        """
+        return preprocess(dataset, self, stats=stats)
+
+
+def preprocess(
+    dataset: SensorDataset,
+    config: PreprocessConfig | Mapping[str, Any] | None = None,
+    *,
+    stats: NormalizationStats | None = None,
+) -> SensorDataset:
     """Apply the preprocessing pipeline and return a new dataset.
+
+    Parameters
+    ----------
+    stats:
+        Pre-fitted normalisation statistics.  When given, normalisation uses
+        these instead of re-estimating from ``dataset``.  Always pass this for
+        evaluation runs so the transform is identical across splits.
 
     The input dataset is never modified.  Labels and group identifiers follow
     the resampled signal using nearest-neighbour index mapping, so window labels
@@ -120,7 +206,7 @@ def preprocess(dataset: SensorDataset, config: PreprocessConfig | Mapping[str, A
             order=config.filter_order,
         )
 
-    data = _normalize(data, config.normalize)
+    data = _normalize(data, config.normalize, stats=stats)
 
     metadata = dict(dataset.metadata)
     metadata["preprocessing"] = {
@@ -185,18 +271,18 @@ def _butter_filter(
     return signal.sosfiltfilt(sos, data, axis=0)
 
 
-def _normalize(data: np.ndarray, mode: str) -> np.ndarray:
-    if mode == "none":
-        return data
-    if mode == "minmax":
-        low = data.min(axis=0, keepdims=True)
-        high = data.max(axis=0, keepdims=True)
-        span = high - low
-        span = np.where(span < 1e-12, 1.0, span)
-        return (data - low) / span
-    if mode == "zscore":
-        mean = data.mean(axis=0, keepdims=True)
-        std = data.std(axis=0, keepdims=True)
-        std = np.where(std < 1e-12, 1.0, std)
-        return (data - mean) / std
-    raise ConfigurationError(f"Unknown normalization mode {mode!r}.")
+def _normalize(
+    data: np.ndarray, mode: str, *, stats: NormalizationStats | None = None
+) -> np.ndarray:
+    """Normalise ``data``.
+
+    Without ``stats`` the statistics are estimated from ``data`` itself, which
+    is only correct when ``data`` is the training set.  Pass ``stats`` to reuse
+    training-fitted statistics on another split.
+    """
+    resolved = stats if stats is not None else NormalizationStats.fit(data, mode)
+    if stats is not None and stats.mode != mode:
+        raise ConfigurationError(
+            f"Normalization stats were fitted for {stats.mode!r} but the config asks for {mode!r}."
+        )
+    return resolved.transform(data)

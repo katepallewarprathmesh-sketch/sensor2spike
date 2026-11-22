@@ -171,11 +171,15 @@ search trials per encoder. Numbers below are from
 
 | Encoder | Best accuracy | Macro F1 | Spikes | Info loss |
 |---|---|---|---|---|
-| `threshold` | **1.0000** | 1.0000 | 2 833 | 0.909 |
-| `delta` | 0.9688 | 0.9687 | 35 848 | **0.488** |
-| `latency` | 0.9271 | 0.9269 | 51 072 | 0.578 |
-| `population` | 0.8958 | 0.8957 | 27 117 | 0.782 |
-| `rate` | 0.8646 | 0.8646 | **2 668** | 0.898 |
+| `threshold` | **1.0000** | 1.0000 | 1 179 | 0.905 |
+| `delta` | 0.9688 | 0.9687 | 15 202 | **0.508** |
+| `latency` | 0.9271 | 0.9269 | 21 888 | 0.589 |
+| `population` | 0.8958 | 0.8957 | 11 641 | 0.784 |
+| `rate` | 0.8646 | 0.8646 | **1 132** | 0.894 |
+
+Every column is measured on the held-out test split, so accuracy and spike
+count describe the same windows. Spike and information-loss figures are the
+per-window averages over that split.
 
 On this dataset `threshold` found a sparse, accurate configuration, while `delta`
 preserved by far the most recoverable signal — information loss 0.488 against
@@ -274,6 +278,53 @@ this, including a custom `decode`.
 
 `sensor2spike encoders` now lists it and `AutoTuner(encoder="my_encoder")` will
 search its space.
+
+---
+
+## Targeting neuromorphic hardware
+
+Neuromorphic processors are built for **always-on sensing at sub-milliwatt
+power**, and a flagship application for the class is **millimetre-wave radar
+presence detection** — distinguishing a person from a moving curtain, including
+someone standing still, at well under a milliwatt. Published systems in this
+space report detection accuracy above 99%.
+
+That application is where the *encoding* decision lives, and it is the part this
+toolkit addresses. A radar front end produces a few channels of band-limited
+time-series at a modest sample rate — 4 range bins at 1 kHz in the bundled demo,
+the same shape as the synthetic benchmark data. Somebody has to turn those
+channels into spikes before the network sees them. That choice determines both
+accuracy and the number of synaptic events the accelerator has to execute, which
+is the dominant term in its energy budget.
+
+What this project does for that decision:
+
+- **Measures the trade-off instead of assuming it.** `threshold` reaches 1.0000
+  accuracy here at 1 179 spikes per window; `rate` reaches 0.8646 at 1 132.
+  Both numbers come from the same held-out windows, so the comparison is fair.
+  On an accelerator that executes events only when a neuron fires, that spike
+  column *is* the energy column.
+- **Produces the representation the hardware consumes.** Every encoder emits an
+  `(time_steps, n_neurons)` binary matrix — 250 × 8 for the demo window above,
+  32% dense. `export_event_frames()` writes that as a plain `.npz` with `frames`,
+  `dt` and channel names, alongside a JSON record of the exact encoder and
+  parameters that generated it.
+- **Keeps the measurement reproducible.** A stored experiment carries the dataset
+  fingerprint, the seed, and the resolved parameters, so an encoding that looked
+  good can be regenerated bit-for-bit later.
+
+What it does **not** do, and this matters before anyone draws a conclusion about
+silicon: it does not target any specific processor's instruction set, does not
+run any vendor toolchain, and does not estimate energy per synaptic event. The
+`compute_cost` objective is a spike-and-step proxy for ranking encoders against
+each other — it is not a measurement of joules on any device. Claims about a
+particular chip's power and accuracy belong to that chip's own published
+benchmarks, and the way to get one is to export the frames, compile them with the
+vendor SDK, and measure.
+
+Read in that light, the honest description of this repository is: **the front
+half of a neuromorphic sensing pipeline, with the encoding choice made
+measurable rather than guessed.**
 
 ---
 

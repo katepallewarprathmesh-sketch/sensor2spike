@@ -23,6 +23,8 @@ DOCUMENTED = {
     "save_dataset",
     "preprocess",
     "split_windows",
+    "export_event_frames",
+    "NormalizationStats",
     "PreprocessConfig",
     # Encoding
     "SpikeEncoder",

@@ -8,7 +8,9 @@ from __future__ import annotations
 from ._core._contracts import SensorDataset, SpikeTrain, WindowSet
 from ._core._spaces import Parameter, SearchSpace
 from ._core.data import (
+    NormalizationStats,
     PreprocessConfig,
+    export_event_frames,
     load_dataset,
     preprocess,
     save_dataset,
@@ -22,6 +24,8 @@ __all__ = [
     "WindowSet",
     "Parameter",
     "SearchSpace",
+    "export_event_frames",
+    "NormalizationStats",
     "PreprocessConfig",
     "load_dataset",
     "save_dataset",
