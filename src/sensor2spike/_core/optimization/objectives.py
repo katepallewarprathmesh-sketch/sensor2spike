@@ -1,6 +1,6 @@
 """Objective functions, Pareto ranking and best-configuration selection.
 
-The optimisation problem (specification section 11.1) is::
+The penalised objective is::
 
     J = w_a (1 - accuracy) + w_s S + w_l L + w_c C
 
@@ -8,7 +8,7 @@ where ``S`` is normalised spike activity, ``L`` information loss and ``C``
 computational cost.  ``score = -J`` so that higher is better.  When the caller
 selects ``objective="multi"`` the same objectives are ranked with non-dominated
 sorting instead of being collapsed into a single number, because a weighted sum
-can hide trade-offs (section 11.2).
+can hide trade-offs.
 """
 
 from __future__ import annotations

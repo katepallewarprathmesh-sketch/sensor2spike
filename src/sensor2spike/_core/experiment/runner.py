@@ -304,8 +304,8 @@ class ExperimentRunner:
         config: OptimizeConfig,
     ) -> TrialResult:
         merged = {**config.encoder_params, **params}
-        # Deterministic reruns (spec 14): the encoder's RNG is seeded from the
-        # experiment seed and the trial index, never from process state.
+        # Deterministic reruns: the encoder's RNG is seeded from the experiment
+        # seed and the trial index, never from process state.
         encoder = build_encoder(config.encoder, seed=config.seed + index, **merged)
         encoder.fit(np.concatenate(train.samples, axis=0), fs=train.sampling_frequency)
 

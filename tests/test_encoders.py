@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sensor2spike.contracts import SpikeTrain
-from sensor2spike.encoders import (
+from sensor2spike._core.contracts import SpikeTrain
+from sensor2spike._core.encoders import (
     ENCODERS,
     SpikeEncoder,
     build_encoder,
@@ -14,7 +14,7 @@ from sensor2spike.encoders import (
     list_encoders,
     validate_encoder_config,
 )
-from sensor2spike.exceptions import ConfigurationError, DataValidationError, EncodingError
+from sensor2spike._core.exceptions import ConfigurationError, DataValidationError, EncodingError
 
 ENCODER_NAMES = sorted(ENCODERS)
 
@@ -250,7 +250,7 @@ def test_delta_encoder_reconstructs_band_limited_signal():
     information-loss term is meaningful: on a band-limited signal the cumulative
     sum of the spikes reproduces the waveform up to a constant.
     """
-    from sensor2spike.analysis.dsp import reconstruction_r2, resample_to_steps
+    from sensor2spike._core.analysis.dsp import reconstruction_r2, resample_to_steps
 
     fs = 1000.0
     t = np.arange(2000) / fs

@@ -1,7 +1,7 @@
 """Report generation: JSON, CSV, Markdown and a self-contained HTML page.
 
-Every report includes a reproducibility block (seed, dataset fingerprint,
-dependency versions) as required by the specification (sections 8.8 and 15).
+Every report carries a reproducibility block (seed, dataset fingerprint,
+dependency versions) so a stored run can be reconstructed later.
 """
 
 from __future__ import annotations

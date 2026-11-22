@@ -189,33 +189,54 @@ with a framework backend before deployment.
 
 ## Architecture
 
+The package is split into a **published surface** and a **private core**. You
+only ever import from `sensor2spike`.
+
 ```
 sensor2spike/
-├── contracts.py      SensorDataset, WindowSet, SpikeTrain, TrialResult, ExperimentResult
-├── data/             loading (CSV/NPZ/NPY), preprocessing, leakage-free window splits
-├── encoders/         five encoders + registry + shared DSP helpers
-├── analysis/         spike statistics, classification metrics, DSP utilities
-├── snn/              SNNBackend ABC, NumPy LIF reference, optional PyTorch LIF
-├── optimization/     objectives, Pareto ranking, search strategies, AutoTuner
-├── experiment/       runner, SQLite registry, comparison
-├── reporting/        JSON/CSV/Markdown/HTML reports and plots
-├── cli.py            argparse-free clickless CLI built on the public API
-└── demo.py           synthetic radar presence dataset
+├── __init__.py        THE PUBLIC API — everything supported lives here
+├── cli.py             command line, built entirely on the public API
+├── demo.py            synthetic radar dataset generator
+├── ui/                optional Streamlit app
+├── _data.py ─┐
+├── _encoding.py ─┤
+├── _measurement.py ─┼─→  _core/     implementation (private)
+├── _results.py ─┤          ├── contracts.py      data + result containers
+├── _errors.py ─┘           ├── data/            I/O, preprocessing, splits
+                            ├── encoders/        the five encoders + registry
+                            ├── analysis/        spike stats, metrics, DSP
+                            ├── snn/             backend ABC + reference LIF
+                            ├── optimization/    objectives, Pareto, search
+                            ├── experiment/      runner, SQLite registry
+                            ├── reporting/       JSON/CSV/MD/HTML + plots
+                            ├── spaces.py        search-space primitives
+                            ├── exceptions.py    the exception hierarchy
+                            └── utils/           hashing, validation, redaction
 ```
 
-A modular monolith: one installable package with clean seams. Encoders and SNN
-backends register themselves, so extensions do not require edits to the core.
+The leading underscore is a promise: `_core` is not an API. Importing
+`sensor2spike.encoders` or `sensor2spike.contracts` fails with a message telling
+you what to use instead, and `tests/test_public_api.py` keeps it that way.
 
-The decisions behind this shape — and the ones behind the reference backend, the
-multi-objective default, determinism and the sigma-delta encoder — are recorded in
-[`docs/adr/`](docs/adr/README.md).
+### The two extension points
+
+Everything else is internal, but these two contracts are meant to be implemented
+by you, and they are versioned as such:
+
+| Contract | Implement | Register |
+|---|---|---|
+| `SpikeEncoder` | `_fit`, `_transform`, `_neuron_count`, `param_space` | `@register_encoder` |
+| `SNNBackend` | `_features`, `_fit`, `_predict_scores`, `n_parameters` | `@register_backend` |
+
+Both inherit the rest — validation, metrics, timing, serialisation, determinism —
+from the base class, so a new strategy is a small, self-contained file. The CLI,
+the optimiser and the reports pick it up with no further wiring.
 
 ### Adding an encoder
 
 ```python
 import numpy as np
-from sensor2spike.encoders import SpikeEncoder, register_encoder
-from sensor2spike.spaces import Parameter, SearchSpace
+from sensor2spike import SpikeEncoder, register_encoder
 
 @register_encoder
 class MyEncoder(SpikeEncoder):
@@ -227,17 +248,23 @@ class MyEncoder(SpikeEncoder):
         super().__init__(dt_ms=dt_ms, seed=seed)
         self.window_ms = window_ms
 
-    def _fit(self, data):                      # data: (n_samples, n_channels)
+    def _fit(self, data):                       # data: (n_samples, n_channels)
         self.n_neurons_ = data.shape[1]
 
-    def _transform(self, data, fs, n_steps):    # -> (n_steps, n_neurons), 0/1
-        from sensor2spike.encoders import resample_to_steps
-        values = self._normalize(resample_to_steps(data, fs, self.dt, n_steps))
+    def _transform(self, data, fs, n_steps):     # -> (n_steps, n_neurons), 0/1
+        values = self._normalize(self._steps(data, fs))
         return (values > 0.5).astype(np.uint8)
 
     def param_space(self):
-        return SearchSpace({"window_ms": Parameter("window_ms", "float", 1.0, 50.0)})
+        return super().param_space().merge(
+            {"window_ms": {"kind": "float", "low": 1.0, "high": 50.0}}
+        )
 ```
+
+`_steps` resamples onto the encoder's time base and `_normalize` maps values onto
+`[0, 1]` using the range learned during `fit`; `super().param_space()` already
+includes `dt_ms`. `examples/custom_encoder.py` is a complete working version of
+this, including a custom `decode`.
 
 `sensor2spike encoders` now lists it and `AutoTuner(encoder="my_encoder")` will
 search its space.
@@ -285,7 +312,7 @@ Built into the design rather than bolted on:
 ## Testing
 
 ```bash
-pytest                       # 216 tests
+pytest                       # 235 tests
 ruff check src tests         # clean
 ```
 
@@ -293,8 +320,10 @@ The suite covers the encoder contract for all five encoders, dataset round trips
 (including CSV at full float precision), leakage-free splitting, Pareto ranking,
 search strategies, registry persistence and determinism, report formats, the CLI
 end to end, and the security properties above. `tests/test_workflow.py` walks the
-full developer workflow from the specification, including bit-for-bit reproduction
-of a stored experiment.
+full developer workflow, including bit-for-bit reproduction of a stored
+experiment, and `tests/test_public_api.py` enforces the boundary described above:
+the documented names must exist, nothing else may leak, and importing the package
+must not pull in an optional dependency.
 
 ---
 

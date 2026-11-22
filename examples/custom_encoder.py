@@ -21,11 +21,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from sensor2spike import AutoTuner, SensorDataset, build_encoder, list_encoders
+from sensor2spike import (
+    AutoTuner,
+    SensorDataset,
+    SpikeEncoder,
+    build_encoder,
+    list_encoders,
+    register_encoder,
+)
 from sensor2spike.demo import generate_demo_dataset
-from sensor2spike.encoders import SpikeEncoder, register_encoder, resample_to_steps
-from sensor2spike.encoders.base import exp_smooth
-from sensor2spike.spaces import Parameter, SearchSpace
 
 
 @register_encoder
@@ -63,7 +67,9 @@ class BensSpikeEncoder(SpikeEncoder):
         self.n_neurons_ = int(data.shape[1])
 
     def _transform(self, data: np.ndarray, fs: float, n_steps: int) -> np.ndarray:
-        values = self._normalize(resample_to_steps(data, fs, self.dt, n_steps))
+        # ``_steps`` resamples onto this encoder's time base (one row per step)
+        # and ``_normalize`` maps values onto [0, 1] using the range seen in fit.
+        values = self._normalize(self._steps(data, fs))
         n_channels = values.shape[1]
         spikes = np.zeros((n_steps, n_channels), dtype=np.uint8)
 
@@ -72,9 +78,7 @@ class BensSpikeEncoder(SpikeEncoder):
         tau = self.adaptation_ms / 1000.0
 
         for step in range(n_steps):
-            baseline = exp_smooth(
-                np.vstack([baseline[None, :], values[step][None, :]]), self.dt, tau
-            )[-1]
+            baseline = baseline + (values[step] - baseline) * min(1.0, self.dt / tau)
             accumulator += values[step] - baseline
             fired = np.abs(accumulator) >= self.threshold
             if fired.any():
@@ -83,18 +87,23 @@ class BensSpikeEncoder(SpikeEncoder):
         return spikes
 
     def decode(self, spikes):
-        """Rate-based estimate: leaky integral of the spikes."""
-        smoothed = exp_smooth(spikes.spikes.astype(np.float64), spikes.dt, 0.02)
+        """Rate-based estimate: a first-order leaky integral of the spikes."""
+        alpha = min(1.0, spikes.dt / 0.02)
+        smoothed = np.zeros_like(spikes.spikes, dtype=np.float64)
+        state = np.zeros(spikes.n_neurons, dtype=np.float64)
+        for step, row in enumerate(spikes.spikes):
+            state = state + (row - state) * alpha
+            smoothed[step] = state
         peak = float(np.abs(smoothed).max()) if smoothed.size else 0.0
         return smoothed if peak <= 1e-12 else np.clip(smoothed / peak, 0.0, 1.0)
 
     # -- search space -------------------------------------------------------------
-    def param_space(self) -> SearchSpace:
-        return SearchSpace(
+    def param_space(self):
+        space = super().param_space()
+        return space.merge(
             {
-                "threshold": Parameter("threshold", "float", 0.01, 0.5, log=True),
-                "adaptation_ms": Parameter("adaptation_ms", "float", 5.0, 200.0, log=True),
-                "dt_ms": Parameter("dt_ms", "choice", choices=(0.5, 1.0, 2.0, 5.0)),
+                "threshold": {"kind": "float", "low": 0.01, "high": 0.5, "log": True},
+                "adaptation_ms": {"kind": "float", "low": 5.0, "high": 200.0, "log": True},
             }
         )
 

@@ -5,15 +5,15 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sensor2spike.contracts import EvaluationResult, SpikeTrain
-from sensor2spike.encoders import build_encoder
-from sensor2spike.exceptions import (
+from sensor2spike._core.contracts import EvaluationResult, SpikeTrain
+from sensor2spike._core.encoders import build_encoder
+from sensor2spike._core.exceptions import (
     ConfigurationError,
     DependencyMissingError,
     EvaluationError,
     Sensor2SpikeError,
 )
-from sensor2spike.snn import (
+from sensor2spike._core.snn import (
     BACKENDS,
     SNNBackend,
     build_backend,
@@ -164,7 +164,7 @@ def test_lif_backend_temporal_bins_change_feature_dimension():
 # ------------------------------------------------------------------- end-to-end path
 def test_encoder_backend_pipeline(tiny_dataset):
     """Full path: window -> encode -> train -> evaluate, leakage-free split."""
-    from sensor2spike.data import split_windows
+    from sensor2spike._core.data import split_windows
 
     windows = tiny_dataset.to_windows(window_samples=64, stride=64)
     train_windows, test_windows = split_windows(windows, test_fraction=0.34, seed=0)

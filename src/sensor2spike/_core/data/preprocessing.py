@@ -1,7 +1,7 @@
 """Signal preprocessing: resampling, detrending, filtering, normalisation.
 
-All operations are deterministic and implemented with NumPy/SciPy only, as
-required by the specification (section 8.2).
+All operations are deterministic and implemented with NumPy/SciPy only, so
+preprocessing never becomes a hidden source of run-to-run variation.
 """
 
 from __future__ import annotations

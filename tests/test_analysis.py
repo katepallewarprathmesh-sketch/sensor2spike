@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sensor2spike.analysis import (
+from sensor2spike._core.analysis import (
     accuracy,
     classification_summary,
     compute_cost,
@@ -14,9 +14,9 @@ from sensor2spike.analysis import (
     macro_f1,
     per_class_accuracy,
 )
-from sensor2spike.contracts import SpikeTrain
-from sensor2spike.exceptions import ConfigurationError, DataValidationError
-from sensor2spike.spaces import Parameter, SearchSpace
+from sensor2spike._core.contracts import SpikeTrain
+from sensor2spike._core.exceptions import ConfigurationError, DataValidationError
+from sensor2spike._core.spaces import Parameter, SearchSpace
 
 
 # ------------------------------------------------------------------------ metrics

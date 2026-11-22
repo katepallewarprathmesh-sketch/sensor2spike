@@ -368,6 +368,11 @@ class SpikeEncoder(ABC):
         return np.clip(normalized, 0.0, 1.0)
 
     def _steps(self, data: np.ndarray, fs: float) -> np.ndarray:
+        """Resample ``(n_samples, n_channels)`` onto this encoder's time base.
+
+        Convenience for subclasses: the result has one row per spike step, which
+        is the shape ``_transform`` has to return (minus the neuron axis).
+        """
         return resample_to_steps(data, fs, self.dt, self._n_steps(data, fs))
 
     def _n_steps(self, data: np.ndarray, fs: float) -> int:

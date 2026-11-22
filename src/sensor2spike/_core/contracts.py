@@ -1,9 +1,8 @@
 """Core data contracts for Sensor2Spike.
 
-These objects are the explicit data contracts required by the architecture
-specification (section 7.3).  They are deliberately plain NumPy containers so
-they can be hashed, serialised and moved between processes without pulling in a
-deep-learning framework.
+These objects are the explicit data contracts between pipeline stages. They are
+deliberately plain NumPy containers so they can be hashed, serialised and moved
+between processes without pulling in a deep-learning framework.
 
 Contracts in this module
 ------------------------
@@ -51,7 +50,7 @@ __all__ = [
     "MAX_SAMPLES",
 ]
 
-#: Guardrails required by the security section of the specification.
+#: Guardrails that keep a single load from exhausting memory.
 MAX_DATASET_BYTES = 4 * 1024**3
 MAX_SAMPLES = 50_000_000
 

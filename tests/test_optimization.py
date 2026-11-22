@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sensor2spike.contracts import TrialResult
-from sensor2spike.exceptions import ConfigurationError, DependencyMissingError
-from sensor2spike.optimization import (
+from sensor2spike._core.contracts import TrialResult
+from sensor2spike._core.exceptions import ConfigurationError, DependencyMissingError
+from sensor2spike._core.optimization import (
     BayesianSearch,
     GridSearch,
     ObjectiveNormalizers,
@@ -24,7 +24,7 @@ from sensor2spike.optimization import (
     select_best,
     summarize_trials,
 )
-from sensor2spike.spaces import Parameter, SearchSpace
+from sensor2spike._core.spaces import Parameter, SearchSpace
 
 
 def _trial(
@@ -208,9 +208,9 @@ def test_grid_search_is_deterministic_and_capped():
 
 
 def test_bayesian_search_requires_optuna(monkeypatch):
-    import sensor2spike.optimization.search as search_module
+    import sensor2spike._core.optimization.search as search_module
 
-    monkeypatch.setattr(search_module, "HAS_OPTUNA", False)
+    monkeypatch.setattr(search_module, "optuna_available", lambda: False)
     with pytest.raises(DependencyMissingError) as excinfo:
         BayesianSearch(n_trials=2).search(SPACE, _evaluator([]))
     assert "optuna" in str(excinfo.value).lower()

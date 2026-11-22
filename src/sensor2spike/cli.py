@@ -14,21 +14,25 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__
-from .contracts import SensorDataset
-from .data import load_dataset, save_dataset, save_spike_train
-from .encoders import build_encoder, list_encoders
-from .exceptions import Sensor2SpikeError
-from .experiment import (
+from . import (
     ExperimentRegistry,
     ExperimentRunner,
+    OptimizeConfig,
+    Sensor2SpikeError,
+    SensorDataset,
+    __version__,
+    build_encoder,
     compare_results,
+    export_config,
+    generate_report,
+    list_backends,
+    list_encoders,
+    load_dataset,
     render_comparison_markdown,
+    save_dataset,
 )
-from .optimization import OptimizeConfig
-from .reporting import export_config, generate_report
-from .snn import list_backends
-from .utils.security import redact_paths
+from ._core.data.io import save_spike_train
+from ._core.utils.security import redact_paths
 
 __all__ = ["main"]
 
@@ -118,7 +122,7 @@ def cmd_encode(args: argparse.Namespace) -> int:
     _print(f"Spike count: {spikes.spike_count} ({spikes.spike_rate_hz:.1f} spikes/s)")
     _print(f"Temporal sparsity: {spikes.temporal_sparsity:.4f}")
     if args.plot:
-        from .reporting.plots import plot_spike_raster
+        from ._core.reporting.plots import plot_spike_raster
 
         path = Path(out).with_suffix(".png")
         plot_spike_raster(spikes, path, title=f"{args.method} encoding — {dataset.name}")

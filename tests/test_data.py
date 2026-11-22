@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sensor2spike.contracts import MAX_SAMPLES, SensorDataset, WindowSet
-from sensor2spike.data import (
+from sensor2spike._core.contracts import MAX_SAMPLES, SensorDataset, WindowSet
+from sensor2spike._core.data import (
     PreprocessConfig,
     load_csv,
     load_dataset,
@@ -17,7 +17,7 @@ from sensor2spike.data import (
     save_npz,
     split_windows,
 )
-from sensor2spike.exceptions import (
+from sensor2spike._core.exceptions import (
     ConfigurationError,
     DataValidationError,
     Sensor2SpikeError,
@@ -50,7 +50,7 @@ def test_dataset_rejects_mismatched_labels_and_groups():
 def test_dataset_enforces_size_guardrail(monkeypatch):
     # Guardrail: refuse recordings above MAX_SAMPLES.  Patch the limit instead of
     # allocating 50 M samples.
-    import sensor2spike.contracts as contracts
+    import sensor2spike._core.contracts as contracts
 
     monkeypatch.setattr(contracts, "MAX_SAMPLES", 5)
     with pytest.raises(DataValidationError):

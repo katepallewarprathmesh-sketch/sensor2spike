@@ -1,6 +1,6 @@
 """High-level optimisation API.
 
-``AutoTuner`` is the facade described in the specification (section 10.1)::
+``AutoTuner`` is the one-call facade::
 
     from sensor2spike import SensorDataset, AutoTuner
 

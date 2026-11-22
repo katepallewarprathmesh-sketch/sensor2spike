@@ -40,8 +40,8 @@ existing suite is organised by layer (`tests/test_encoders.py`,
 
 ## Invariants to preserve
 
-These are load-bearing; a change that breaks one needs a very good reason and an
-ADR.
+These are load-bearing; a change that breaks one needs a very good reason and a
+note in the pull request explaining why the invariant no longer holds.
 
 1. **Determinism.** Re-running a configuration must reproduce the same numbers.
    Never read global RNG state; derive seeds from the experiment seed and the
@@ -74,8 +74,8 @@ disagreed. Deriving the seed from (seed, trial index) makes experiments
 reproducible, which the registry and the comparison view depend on.
 ```
 
-## Architecture decisions
+## Changing an extension point
 
-Non-obvious choices are recorded in `docs/adr/`. If your change alters one — the
-default objective, the backend contract, the registry schema — add a new ADR
-rather than quietly rewriting the old one.
+`SpikeEncoder` and `SNNBackend` are public contracts: third-party code subclasses
+them. Adding a hook is fine; changing an existing signature needs a deprecation
+path, because someone else's encoder is relying on it.

@@ -24,7 +24,13 @@ import json
 import time
 from pathlib import Path
 
-from sensor2spike import AutoTuner, ExperimentRegistry, load_dataset, save_dataset
+from sensor2spike import (
+    AutoTuner,
+    ExperimentRegistry,
+    generate_report,
+    load_dataset,
+    save_dataset,
+)
 from sensor2spike.demo import demo_summary, generate_demo_dataset
 
 ENCODERS = ("rate", "latency", "threshold", "delta", "population")
@@ -132,8 +138,6 @@ def main() -> int:
     # --------------------------------------------------------------------- reports
     reports_dir = out / "reports"
     written = final.export(reports_dir / f"{final.experiment_id}.json").parent
-    from sensor2spike.reporting import generate_report
-
     generate_report(final, reports_dir)
     config_path = final.export_config(reports_dir / "best_config.json")
     print()
