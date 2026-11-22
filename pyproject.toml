@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sensor2spike"
+version = "0.1.0"
+description = "Sensor-to-spike encoding optimisation platform for spiking neural networks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sensor2Spike contributors" }]
+keywords = [
+    "neuromorphic",
+    "spiking-neural-networks",
+    "snn",
+    "sensor",
+    "encoding",
+    "optimization",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+ml = ["torch>=2.0"]
+bayes = ["optuna>=3.0"]
+viz = ["matplotlib>=3.7"]
+ui = ["streamlit>=1.30", "pandas>=2.0"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+all = ["torch>=2.0", "optuna>=3.0", "matplotlib>=3.7"]
+
+[project.scripts]
+sensor2spike = "sensor2spike.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/sensor2spike/sensor2spike/tree/main/docs"
+Source = "https://github.com/sensor2spike/sensor2spike"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+    "error::DeprecationWarning:sensor2spike.*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["sensor2spike"]

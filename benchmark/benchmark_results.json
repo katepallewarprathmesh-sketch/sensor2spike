@@ -1,0 +1,132 @@
+{
+  "dataset": {
+    "name": "bench_radar_presence",
+    "sensor_type": "radar",
+    "n_samples": 80000,
+    "n_channels": 4,
+    "duration_seconds": 80.0,
+    "sampling_frequency": 1000.0,
+    "channel_names": [
+      "range_bin_0",
+      "range_bin_1",
+      "range_bin_2",
+      "range_bin_3"
+    ],
+    "has_labels": true,
+    "n_classes": 2,
+    "n_groups": 80,
+    "version": "1",
+    "fingerprint": "858e7d8954e62598"
+  },
+  "settings": {
+    "trials_per_encoder": 40,
+    "window_seconds": 0.25,
+    "seed": 7,
+    "optimizer": "random"
+  },
+  "results": [
+    {
+      "encoder": "rate",
+      "experiment_id": "exp_a315aa76ae658bc7",
+      "accuracy": 0.8645833333333334,
+      "macro_f1": 0.8645686380900706,
+      "spike_count": 2668,
+      "information_loss": 0.8981615119048627,
+      "compute_cost": 138680.0,
+      "params": {
+        "rate_max_hz": 32.49545336653006,
+        "dt_ms": 2.0,
+        "mode": "deterministic",
+        "gain": 0.859345942744285
+      },
+      "n_trials": 40,
+      "n_ok": 40,
+      "n_feasible": 40,
+      "pareto_front": 18,
+      "duration_s": 15.750638571999843
+    },
+    {
+      "encoder": "latency",
+      "experiment_id": "exp_beea6324fd91ceae",
+      "accuracy": 0.9270833333333334,
+      "macro_f1": 0.926884996191927,
+      "spike_count": 51072,
+      "information_loss": 0.5778281674715079,
+      "compute_cost": 4766720.0,
+      "params": {
+        "neurons_per_channel": 19,
+        "sigma": 0.3795789833946301,
+        "t_max_ms": 17.646862148026347,
+        "frame_ms": 88.5362684774402,
+        "dt_ms": 1.0
+      },
+      "n_trials": 40,
+      "n_ok": 40,
+      "n_feasible": 40,
+      "pareto_front": 26,
+      "duration_s": 29.645117921999827
+    },
+    {
+      "encoder": "threshold",
+      "experiment_id": "exp_3e3b710d11bd6eff",
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "spike_count": 2833,
+      "information_loss": 0.9089977313521216,
+      "compute_cost": 117930.0,
+      "params": {
+        "threshold": 0.542797881659594,
+        "mode": "signed",
+        "refractory_ms": 39.633095960687655,
+        "dt_ms": 5.0
+      },
+      "n_trials": 40,
+      "n_ok": 40,
+      "n_feasible": 40,
+      "pareto_front": 14,
+      "duration_s": 26.37833674600006
+    },
+    {
+      "encoder": "delta",
+      "experiment_id": "exp_b8249a7cf0720bb2",
+      "accuracy": 0.96875,
+      "macro_f1": 0.9687466087900163,
+      "spike_count": 35848,
+      "information_loss": 0.4878050708990539,
+      "compute_cost": 448080.0,
+      "params": {
+        "threshold": 0.010490851498930004,
+        "max_steps_per_sample": 3,
+        "dt_ms": 5.0
+      },
+      "n_trials": 40,
+      "n_ok": 40,
+      "n_feasible": 40,
+      "pareto_front": 32,
+      "duration_s": 66.09253222699999
+    },
+    {
+      "encoder": "population",
+      "experiment_id": "exp_206fdd6d91fc1f63",
+      "accuracy": 0.8958333333333334,
+      "macro_f1": 0.8956521739130434,
+      "spike_count": 27117,
+      "information_loss": 0.782308402097882,
+      "compute_cost": 3519170.0,
+      "params": {
+        "neurons_per_channel": 29,
+        "sigma": 0.11708636273528616,
+        "rate_max_hz": 20.241851854463626,
+        "mode": "deterministic",
+        "dt_ms": 2.0
+      },
+      "n_trials": 40,
+      "n_ok": 40,
+      "n_feasible": 40,
+      "pareto_front": 21,
+      "duration_s": 43.536850314000276
+    }
+  ],
+  "registered_experiments": 0,
+  "caveat": "Single synthetic band-limited dataset, small trial budget. Figures are indicative of the optimisation loop, not a claim about real sensor hardware."
+}

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated artefacts (never commit: these are outputs, not inputs)
+*.db
+*.db-journal
+results/
+reports/
+demo_output/
+*.npz
+*.npy
+
+# Keep the curated benchmark evidence (JSON is not matched above, but be explicit)
+!benchmark/benchmark_results.json
+
+# OS
+.DS_Store
