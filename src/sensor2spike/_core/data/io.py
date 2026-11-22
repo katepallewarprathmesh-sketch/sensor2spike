@@ -238,8 +238,8 @@ def load_npz(
     path = Path(path)
     _check_readable(path, max_bytes=max_bytes)
     # ``allow_pickle=False`` is enforced on every array access, not just on
-    # ``np.load``, so the whole read is wrapped: untrusted archives never execute
-    # code (spec 13).
+    # ``np.load``, so the whole read is wrapped: an untrusted archive can never
+    # execute code.
     try:
         with np.load(path, allow_pickle=False) as payload:
             missing = [key for key in ("data", "sampling_frequency") if key not in payload]

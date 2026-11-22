@@ -8,6 +8,7 @@ is what makes the optimisation engine pluggable.
 
 from __future__ import annotations
 
+import importlib.util
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from typing import Any, ClassVar
@@ -30,12 +31,16 @@ __all__ = [
 Evaluate = Callable[[dict[str, Any]], TrialResult]
 
 
-try:  # pragma: no cover - environment dependent
-    import optuna as _optuna  # noqa: F401
+def optuna_available() -> bool:
+    """Whether the optional ``optuna`` dependency can be imported.
 
-    HAS_OPTUNA = True
-except ImportError:  # pragma: no cover
-    HAS_OPTUNA = False
+    Checked through ``find_spec`` so that asking does not import a heavy
+    third-party package (and so ``import sensor2spike`` stays numpy+scipy only).
+    """
+    return importlib.util.find_spec("optuna") is not None
+
+
+HAS_OPTUNA = optuna_available()
 
 
 class SearchStrategy(ABC):
@@ -120,7 +125,7 @@ class BayesianSearch(SearchStrategy):
         self.n_startup_trials = int(n_startup_trials)
 
     def search(self, space, evaluate, n_trials=None):
-        if not HAS_OPTUNA:  # pragma: no cover - environment dependent
+        if not optuna_available():  # pragma: no cover - environment dependent
             raise DependencyMissingError(
                 "optuna", extra="bayes", purpose="Bayesian optimisation"
             )

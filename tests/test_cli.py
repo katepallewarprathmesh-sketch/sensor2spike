@@ -11,14 +11,14 @@ from sensor2spike.cli import main
 
 @pytest.fixture()
 def csv_dataset(tmp_path, tiny_dataset):
-    from sensor2spike.data import save_csv
+    from sensor2spike._core.data import save_csv
 
     return save_csv(tiny_dataset, tmp_path / "tiny.csv")
 
 
 @pytest.fixture()
 def npz_dataset(tmp_path, tiny_dataset):
-    from sensor2spike.data import save_dataset
+    from sensor2spike._core.data import save_dataset
 
     return save_dataset(tiny_dataset, tmp_path / "tiny.npz")
 
@@ -113,7 +113,7 @@ def test_encode_writes_spike_file(npz_dataset, tmp_path, capsys):
     assert code == 0, err
     assert out_file.exists()
     assert "Spike count" in out
-    from sensor2spike.data import load_spike_train
+    from sensor2spike._core.data import load_spike_train
 
     spikes = load_spike_train(out_file)
     assert spikes.encoder == "rate"
@@ -251,7 +251,7 @@ def stored_experiment(npz_dataset, tmp_path):
         ]
     )
     assert code == 0
-    from sensor2spike.experiment import ExperimentRegistry
+    from sensor2spike._core.experiment import ExperimentRegistry
 
     experiment_id = ExperimentRegistry(registry).list_experiments()[0]["experiment_id"]
     return registry, experiment_id

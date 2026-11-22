@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sensor2spike.contracts import EvaluationResult, ExperimentResult, SpikeTrain, TrialResult
+from sensor2spike._core.contracts import EvaluationResult, ExperimentResult, SpikeTrain, TrialResult
 from sensor2spike.demo import generate_demo_dataset
 
 
@@ -34,7 +34,7 @@ def tiny_dataset():
         blocks.append(signal.astype(np.float32))
         labels.append(np.full(n_samples, label, dtype=np.int64))
         groups.append(np.full(n_samples, trial, dtype=np.int64))
-    from sensor2spike.contracts import SensorDataset
+    from sensor2spike._core.contracts import SensorDataset
 
     return SensorDataset(
         data=np.concatenate(blocks),

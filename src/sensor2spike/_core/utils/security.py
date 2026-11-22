@@ -1,8 +1,8 @@
 """Redaction helpers used when surfacing errors to end users.
 
-The specification requires that local file paths are not exposed in error
-reports (section 13).  This module provides a small, dependency-free
-implementation.
+Error text surfaced to users should identify *which* file failed without
+exposing a user's directory layout. This module provides a small,
+dependency-free implementation.
 """
 
 from __future__ import annotations

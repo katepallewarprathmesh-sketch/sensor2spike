@@ -24,9 +24,9 @@ from sensor2spike import (
     load_dataset,
     save_dataset,
 )
+from sensor2spike._core.exceptions import DataValidationError
+from sensor2spike._core.utils.security import redact_paths, safe_name
 from sensor2spike.demo import generate_demo_dataset
-from sensor2spike.exceptions import DataValidationError
-from sensor2spike.utils.security import redact_paths, safe_name
 
 
 # ---------------------------------------------------------------- public API surface
@@ -98,7 +98,7 @@ def test_experiment_can_be_reproduced_bit_for_bit(tmp_path):
 
 
 def test_exported_config_rebuilds_the_encoder(experiment_result, tmp_path):
-    from sensor2spike.reporting import export_config
+    from sensor2spike._core.reporting import export_config
 
     path = export_config(experiment_result, tmp_path / "best.json")
     payload = json.loads(path.read_text())
@@ -138,7 +138,7 @@ def test_safe_name_strips_unsafe_characters():
 
 
 def test_error_messages_do_not_leak_paths(tiny_dataset, tmp_path, monkeypatch):
-    import sensor2spike.experiment.runner as runner_module
+    import sensor2spike._core.experiment.runner as runner_module
 
     secret = tmp_path / "very_secret_folder" / "data.npz"
 
@@ -195,7 +195,7 @@ def test_no_arbitrary_code_execution_on_load(tmp_path):
 
 # --------------------------------------------------------------------- reliability
 def test_failed_experiment_is_recorded_not_lost(tmp_path, tiny_dataset, monkeypatch):
-    import sensor2spike.optimization.search as search_module
+    import sensor2spike._core.optimization.search as search_module
 
     def boom(self, space, evaluate, n_trials=None):
         raise RuntimeError("simulated backend crash")
@@ -212,7 +212,7 @@ def test_failed_experiment_is_recorded_not_lost(tmp_path, tiny_dataset, monkeypa
 
 
 def test_partial_trial_failures_do_not_break_the_run(tiny_dataset, monkeypatch):
-    import sensor2spike.experiment.runner as runner_module
+    import sensor2spike._core.experiment.runner as runner_module
 
     original = runner_module.build_encoder
     state = {"n": 0}
@@ -232,7 +232,7 @@ def test_partial_trial_failures_do_not_break_the_run(tiny_dataset, monkeypatch):
 
 def test_reports_only_contain_measured_values(experiment_result):
     """Spec: never claim unmeasured performance — report only recorded metrics."""
-    from sensor2spike.reporting import render_markdown
+    from sensor2spike._core.reporting import render_markdown
 
     markdown = render_markdown(experiment_result)
     for word in ("state-of-the-art", "SOTA", "superior to", "outperforms"):
@@ -245,8 +245,8 @@ def test_reports_only_contain_measured_values(experiment_result):
 # ----------------------------------------------------------------- notebook-style run
 def test_full_manual_pipeline(tiny_dataset):
     """Do it by hand: windows -> split -> encode -> train -> evaluate."""
-    from sensor2spike.analysis import compute_spike_stats
-    from sensor2spike.data import PreprocessConfig, preprocess, split_windows
+    from sensor2spike._core.analysis import compute_spike_stats
+    from sensor2spike._core.data import PreprocessConfig, preprocess, split_windows
 
     processed = preprocess(tiny_dataset, PreprocessConfig(detrend=True, normalize="zscore"))
     windows = processed.to_windows(window_samples=64, stride=64)

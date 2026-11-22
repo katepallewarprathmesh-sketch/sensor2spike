@@ -6,9 +6,9 @@ import json
 
 import pytest
 
-from sensor2spike.contracts import ExperimentResult
-from sensor2spike.exceptions import ConfigurationError, ReportError
-from sensor2spike.reporting import (
+from sensor2spike._core.contracts import ExperimentResult
+from sensor2spike._core.exceptions import ConfigurationError, ReportError
+from sensor2spike._core.reporting import (
     export_config,
     export_result,
     generate_report,
@@ -83,7 +83,7 @@ def test_export_config_is_directly_reusable(experiment_result, tmp_path):
     assert config["encoder"] == "rate"
     assert config["params"]
     # The exported config must rebuild a working encoder.
-    from sensor2spike.encoders import build_encoder
+    from sensor2spike._core.encoders import build_encoder
 
     encoder = build_encoder({"encoder": config["encoder"], **config["params"]})
     assert encoder.name == "rate"
@@ -115,7 +115,7 @@ def test_generate_report_can_skip_plots(experiment_result, tmp_path):
 
 
 def test_generate_report_survives_plot_failure(experiment_result, tmp_path, monkeypatch):
-    import sensor2spike.reporting.plots as plots_module
+    import sensor2spike._core.reporting.plots as plots_module
 
     def boom(*args, **kwargs):
         raise RuntimeError("no display")
@@ -136,7 +136,7 @@ def test_generate_report_never_leaks_paths(experiment_result, tmp_path):
 
 # ------------------------------------------------------------------------- plots
 def test_pareto_plot_is_a_png(experiment_result, tmp_path):
-    from sensor2spike.reporting.plots import plot_pareto
+    from sensor2spike._core.reporting.plots import plot_pareto
 
     path = plot_pareto(experiment_result, tmp_path / "pareto.png")
     assert path.exists()
@@ -144,7 +144,7 @@ def test_pareto_plot_is_a_png(experiment_result, tmp_path):
 
 
 def test_spike_raster_plot(spike_train, tmp_path):
-    from sensor2spike.reporting.plots import plot_spike_raster
+    from sensor2spike._core.reporting.plots import plot_spike_raster
 
     path = plot_spike_raster(spike_train, tmp_path / "raster.png")
     assert path.exists()

@@ -1,8 +1,7 @@
 """Synthetic radar demo dataset: human presence detection.
 
-The specification recommends starting with a single application, preferably
-radar-based human presence detection (section 23).  This generator produces a
-reproducible stand-in for such a recording so the whole pipeline can be
+A radar presence-detection recording is the motivating application; this
+generator produces a reproducible stand-in so the whole pipeline can be
 exercised without hardware:
 
 * **Class 0 — empty room**: low-frequency clutter (HVAC / fan vibration) plus
@@ -21,7 +20,7 @@ from typing import Any
 
 import numpy as np
 
-from .contracts import SensorDataset
+from ._core._contracts import SensorDataset
 
 __all__ = ["generate_demo_dataset", "DEMO_CLASS_NAMES", "DEMO_SENSOR_TYPE"]
 

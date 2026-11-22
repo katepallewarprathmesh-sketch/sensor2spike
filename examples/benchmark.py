@@ -28,8 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
-from sensor2spike import AutoTuner, ExperimentRegistry
-from sensor2spike.contracts import SensorDataset
+from sensor2spike import AutoTuner, ExperimentRegistry, SensorDataset
 
 ENCODERS = ("rate", "latency", "threshold", "delta", "population")
 

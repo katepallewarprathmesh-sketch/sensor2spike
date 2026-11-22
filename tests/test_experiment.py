@@ -8,15 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from sensor2spike.contracts import ExperimentResult
-from sensor2spike.exceptions import ConfigurationError, RegistryError
-from sensor2spike.experiment import (
+from sensor2spike._core.contracts import ExperimentResult
+from sensor2spike._core.exceptions import ConfigurationError, RegistryError
+from sensor2spike._core.experiment import (
     ExperimentRegistry,
     ExperimentRunner,
     compare_results,
     render_comparison_markdown,
 )
-from sensor2spike.optimization import OptimizeConfig
+from sensor2spike._core.optimization import OptimizeConfig
 
 
 def _config(**overrides) -> OptimizeConfig:
@@ -81,7 +81,7 @@ def test_runner_rejects_unknown_config_keys(tiny_dataset):
 
 def test_runner_records_failed_experiments_without_raising(tiny_dataset, monkeypatch):
     """A failing strategy must be persisted as ``failed`` rather than lost (spec 14)."""
-    import sensor2spike.optimization.search as search_module
+    import sensor2spike._core.optimization.search as search_module
 
     def boom(self, space, evaluate, n_trials=None):
         raise RuntimeError("strategy exploded")
@@ -99,7 +99,7 @@ def test_runner_records_failed_experiments_without_raising(tiny_dataset, monkeyp
 
 
 def test_runner_marks_individual_trial_failures(tiny_dataset, monkeypatch):
-    import sensor2spike.experiment.runner as runner_module
+    import sensor2spike._core.experiment.runner as runner_module
 
     original = runner_module.build_encoder
     calls = {"n": 0}
@@ -120,7 +120,7 @@ def test_runner_marks_individual_trial_failures(tiny_dataset, monkeypatch):
 
 
 def test_fail_fast_stops_on_first_trial_error(tiny_dataset, monkeypatch):
-    import sensor2spike.experiment.runner as runner_module
+    import sensor2spike._core.experiment.runner as runner_module
 
     def always_fail(*args, **kwargs):
         raise RuntimeError("nope")
