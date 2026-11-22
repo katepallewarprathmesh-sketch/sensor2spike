@@ -259,6 +259,11 @@ class MyEncoder(SpikeEncoder):
         return super().param_space().merge(
             {"window_ms": {"kind": "float", "low": 1.0, "high": 50.0}}
         )
+
+# It is live in the registry the moment the module is imported.
+best = AutoTuner(objective="multi_objective", encoder="my_encoder",
+                 n_trials=8, seed=0, window_seconds=0.25).optimize(dataset)
+print(best.best.params)          # {'dt_ms': ..., 'window_ms': ...}
 ```
 
 `_steps` resamples onto the encoder's time base and `_normalize` maps values onto
@@ -312,7 +317,7 @@ Built into the design rather than bolted on:
 ## Testing
 
 ```bash
-pytest                       # 235 tests
+pytest                       # 241 tests
 ruff check src tests         # clean
 ```
 
@@ -321,9 +326,10 @@ The suite covers the encoder contract for all five encoders, dataset round trips
 search strategies, registry persistence and determinism, report formats, the CLI
 end to end, and the security properties above. `tests/test_workflow.py` walks the
 full developer workflow, including bit-for-bit reproduction of a stored
-experiment, and `tests/test_public_api.py` enforces the boundary described above:
-the documented names must exist, nothing else may leak, and importing the package
-must not pull in an optional dependency.
+experiment. `tests/test_public_api.py` enforces the boundary described above — the
+documented names must exist, nothing else may leak, and importing the package must
+not pull in an optional dependency — while `tests/test_readme.py` executes every
+code block in this file, because documentation that no longer runs is a lie.
 
 ---
 

@@ -38,6 +38,7 @@ DOCUMENTED = {
     # Measurement
     "SNNBackend",
     "LIFRidgeBackend",
+    "TorchLIFBackend",
     "build_backend",
     "list_backends",
     "register_backend",
@@ -118,11 +119,13 @@ def test_implementation_packages_are_not_importable(module: str):
 
 
 def test_attribute_access_explains_where_to_look_instead():
+    """The message must name the public thing to use, not the private module."""
     with pytest.raises(AttributeError) as excinfo:
         _ = sensor2spike.encoders  # noqa: B009 - intentional attribute access
     message = str(excinfo.value)
-    assert "_encoding" in message
     assert "implementation detail" in message
+    assert "SpikeEncoder" in message
+    assert "_encoding" not in message
 
 
 def test_unknown_attribute_raises_plain_attribute_error():
@@ -146,3 +149,74 @@ def test_public_import_does_not_pull_in_optional_dependencies():
 def test_version_is_semver_ish():
     parts = sensor2spike.__version__.split(".")
     assert len(parts) >= 2 and all(part.isdigit() for part in parts[:2])
+
+
+# --------------------------------------------------- migration hints stay honest
+def test_migration_hints_name_real_public_entities():
+    """A hint that points at a rename, a typo or a private module is worse than
+    no hint: it sends the reader in a circle. Every identifier a hint mentions
+    must be in ``__all__``, and no hint may recommend a private module."""
+    import inspect
+    import re
+
+    source = inspect.getsource(sensor2spike.__getattr__)
+    body = source[source.index("replacements = {") : source.index("hint = replacements.get")]
+
+    recommended = set()
+    for literal in re.findall(r'"([^"]*)"', body):
+        for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", literal):
+            if token in {"the", "a", "an", "and", "its", "of", "not", "part", "public"}:
+                continue
+            recommended.add(token)
+
+    unknown = {
+        name
+        for name in recommended
+        if name not in sensor2spike.__all__ and not name.startswith("__")
+    }
+    # Prose words that happen to look like identifiers are allowed, but a name
+    # that looks like a class or a snake_case API (e.g. ``parse_search_space``)
+    # is not.
+    api_shaped = {
+        name
+        for name in unknown
+        if not name.isupper()  # allow acronyms such as API in prose
+        and (name[0].isupper() or (name.islower() and "_" in name))
+    }
+    assert not api_shaped, f"hints recommend names that are not public: {sorted(api_shaped)}"
+
+
+def test_migration_hints_never_point_at_private_modules():
+    import inspect
+
+    source = inspect.getsource(sensor2spike.__getattr__)
+    assert "_core" not in source, "a hint must not send users to the private core"
+
+
+# ------------------------------------- not even a path to the internals escapes
+def test_listed_class_paths_are_public_import_paths():
+    """``list_encoders`` / ``list_backends`` feed the CLI table and report JSON.
+
+    Printing ``sensor2spike._core.encoders.delta.DeltaEncoder`` there would leak
+    the private layout to anyone who reads the output, so the path must be the
+    public one — and it must actually resolve.
+    """
+    from sensor2spike import list_backends, list_encoders
+
+    for entry in [*list_encoders(), *list_backends()]:
+        path = entry["class"]
+        assert "_core" not in path, f"{entry['name']} leaks a private path: {path}"
+        module_name, _, attr = path.rpartition(".")
+        module = __import__(module_name, fromlist=[attr])
+        assert hasattr(module, attr), f"{path} does not resolve"
+
+
+def test_encoder_errors_do_not_leak_private_modules():
+    """Validation messages are user-facing: they must not name private modules."""
+    from sensor2spike import ConfigurationError, build_encoder
+
+    with pytest.raises(ConfigurationError) as excinfo:
+        build_encoder("nope")
+    message = str(excinfo.value)
+    assert "_core" not in message
+    assert "rate" in message  # the available encoders are listed
