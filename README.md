@@ -418,5 +418,3 @@ Built into the design rather than bolted on:
 ## License
 
 MIT. See `LICENSE`.
-
-<!-- direct-commit test -->
