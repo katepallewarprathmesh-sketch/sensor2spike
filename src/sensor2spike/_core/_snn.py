@@ -4,6 +4,7 @@ from .snn import (
     BACKENDS,
     LIFRidgeBackend,
     SNNBackend,
+    TorchLIFBackend,
     build_backend,
     get_backend_class,
     list_backends,
@@ -13,6 +14,7 @@ from .snn import (
 __all__ = [
     "SNNBackend",
     "LIFRidgeBackend",
+    "TorchLIFBackend",
     "BACKENDS",
     "build_backend",
     "get_backend_class",

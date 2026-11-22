@@ -134,13 +134,26 @@ def validate_encoder_config(name: str, config: Mapping[str, Any]) -> dict[str, A
     return resolved
 
 
+def public_class_path(cls: type) -> str:
+    """The import path a user should see for ``cls``.
+
+    Encoders and backends live under ``sensor2spike._core``… internally, but that
+    is not something to print in CLI tables or report JSON: the reported path is
+    the *public* one, i.e. ``sensor2spike.DeltaEncoder``. Extensions registered
+    from another package keep their own module path.
+    """
+    module = getattr(cls, "__module__", "") or ""
+    if module.startswith("sensor2spike._core"):
+        return f"sensor2spike.{cls.__name__}"
+    return f"{module}.{cls.__name__}"
+
 def list_encoders() -> list[dict[str, Any]]:
     """Describe every registered encoder (used by the CLI and reports)."""
     return [
         {
             "name": key,
             "description": cls.description,
-            "class": f"{cls.__module__}.{cls.__name__}",
+            "class": public_class_path(cls),
             "parameters": list(cls.PARAM_NAMES),
         }
         for key, cls in sorted(ENCODERS.items())

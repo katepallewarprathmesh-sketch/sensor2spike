@@ -77,13 +77,26 @@ def build_backend(
         raise ConfigurationError(f"Invalid configuration for {backend_cls.name}: {exc}") from exc
 
 
+def public_class_path(cls: type) -> str:
+    """The import path a user should see for ``cls``.
+
+    Encoders and backends live under ``sensor2spike._core``… internally, but that
+    is not something to print in CLI tables or report JSON: the reported path is
+    the *public* one, i.e. ``sensor2spike.DeltaEncoder``. Extensions registered
+    from another package keep their own module path.
+    """
+    module = getattr(cls, "__module__", "") or ""
+    if module.startswith("sensor2spike._core"):
+        return f"sensor2spike.{cls.__name__}"
+    return f"{module}.{cls.__name__}"
+
 def list_backends() -> list[dict[str, Any]]:
     """Describe every registered backend."""
     return [
         {
             "name": key,
             "description": cls.description,
-            "class": f"{cls.__module__}.{cls.__name__}",
+            "class": public_class_path(cls),
         }
         for key, cls in sorted(BACKENDS.items())
     ]

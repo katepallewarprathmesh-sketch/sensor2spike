@@ -86,6 +86,7 @@ from ._measurement import (
     ObjectiveWeights,
     OptimizeConfig,
     SNNBackend,
+    TorchLIFBackend,
     build_backend,
     compare_results,
     compute_spike_stats,
@@ -131,6 +132,7 @@ __all__ = [
     # Measurement
     "SNNBackend",
     "LIFRidgeBackend",
+    "TorchLIFBackend",
     "build_backend",
     "list_backends",
     "register_backend",
@@ -168,25 +170,36 @@ def __getattr__(name: str) -> object:
 
     Before the modules were made private, ``import sensor2spike.encoders`` and
     friends worked. Reaching for them now has to say what to use instead rather
-    than raising a bare ``ModuleNotFoundError``.
+    than raising a bare ``ModuleNotFoundError`` — and "what to use" always means
+    a name in ``__all__``, never another private module.
     """
     replacements = {
-        "contracts": "_results / _data (types are re-exported from sensor2spike)",
-        "encoders": "_encoding",
-        "snn": "_measurement",
-        "optimization": "_measurement",
-        "experiment": "_measurement",
-        "reporting": "_measurement",
-        "data": "_data",
-        "analysis": "compute_spike_stats is re-exported from sensor2spike",
-        "spaces": "_encoding (encoder_space is the supported entry point)",
-        "exceptions": "_errors",
-        "utils": "no public surface",
+        "contracts": "SensorDataset, WindowSet, SpikeTrain, TrialResult and "
+        "ExperimentResult",
+        "encoders": "SpikeEncoder, register_encoder, build_encoder, "
+        "list_encoders and the five built-in encoder classes",
+        "snn": "SNNBackend, register_backend, build_backend, list_backends and "
+        "LIFRidgeBackend",
+        "optimization": "AutoTuner, OptimizeConfig, ObjectiveWeights and "
+        "TrialResult",
+        "experiment": "ExperimentRunner, ExperimentRegistry, ExperimentResult "
+        "and compare_results",
+        "reporting": "generate_report, render_comparison_markdown, export_result "
+        "and export_config",
+        "data": "SensorDataset, load_dataset, save_dataset, preprocess, "
+        "PreprocessConfig and split_windows",
+        "analysis": "compute_spike_stats, SpikeStats and EvaluationResult",
+        "spaces": "encoder_space (the supported way to describe a search space)",
+        "exceptions": "Sensor2SpikeError and its subclasses: DataValidationError, "
+        "ConfigurationError, EncodingError, EvaluationError, OptimizationError, "
+        "RegistryError, ReportError and DependencyMissingError",
+        "utils": "nothing — that module was internal only, and none of its "
+        "helpers are part of the public API",
     }
     hint = replacements.get(name)
     if hint is not None:
         raise AttributeError(
-            f"{name!r} is an implementation detail of Sensor2Spike and is not part "
-            f"of the public API. Use {hint}."
+            f"{name!r} is an implementation detail of Sensor2Spike and is not "
+            f"part of the public API. Use {hint}."
         )
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

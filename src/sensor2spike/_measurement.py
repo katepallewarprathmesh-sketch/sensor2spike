@@ -17,6 +17,7 @@ from ._core._reporting import export_config, export_result, generate_report
 from ._core._snn import (
     LIFRidgeBackend,
     SNNBackend,
+    TorchLIFBackend,
     build_backend,
     list_backends,
     register_backend,
@@ -25,6 +26,7 @@ from ._core._snn import (
 __all__ = [
     "SNNBackend",
     "LIFRidgeBackend",
+    "TorchLIFBackend",
     "build_backend",
     "list_backends",
     "register_backend",
