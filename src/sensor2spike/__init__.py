@@ -40,10 +40,12 @@ from __future__ import annotations
 
 # -- Data ----------------------------------------------------------------------
 from ._data import (
+    NormalizationStats,
     PreprocessConfig,
     SensorDataset,
     SpikeTrain,
     WindowSet,
+    export_event_frames,
     load_dataset,
     preprocess,
     save_dataset,
@@ -117,6 +119,8 @@ __all__ = [
     "save_dataset",
     "preprocess",
     "split_windows",
+    "export_event_frames",
+    "NormalizationStats",
     "PreprocessConfig",
     # Encoding
     "SpikeEncoder",

@@ -28,7 +28,7 @@ from ..contracts import ExperimentResult, SensorDataset, TrialResult
 from ..data.preprocessing import preprocess
 from ..data.splits import split_windows
 from ..encoders import build_encoder
-from ..exceptions import DataValidationError
+from ..exceptions import ConfigurationError, DataValidationError
 from ..optimization.objectives import (
     ObjectiveNormalizers,
     compute_objectives,
@@ -100,12 +100,26 @@ class ExperimentRunner:
         started = time.perf_counter()
         created_at = _utc_now()
 
-        processed = preprocess(dataset, config.resolved_preprocess())
-        window_samples, stride_samples = self._windowing(processed, config)
+        # Split FIRST, then fit the preprocessing transform on the training
+        # groups only.  Fitting min/max or mean/std on the whole recording would
+        # leak test-set statistics into every training window and inflate the
+        # reported accuracy.
+        preprocess_config = config.resolved_preprocess()
+        window_samples, stride_samples = self._windowing(dataset, config)
+        self._reject_overlapping_untenable(dataset, window_samples, stride_samples)
+        raw_windows = dataset.to_windows(window_samples, stride_samples)
+        raw_train, raw_test = split_windows(
+            raw_windows, test_fraction=config.test_fraction, seed=config.seed
+        )
+        stats = preprocess_config.fit(np.concatenate(raw_train.samples, axis=0))
+        processed = preprocess(dataset, preprocess_config, stats=stats)
         windows = processed.to_windows(window_samples, stride_samples)
         train, test = split_windows(
             windows, test_fraction=config.test_fraction, seed=config.seed
         )
+        # The transform is fitted on train, so the two splits must still contain
+        # exactly the same windows as the raw split that defined it.
+        assert train.n_windows == raw_train.n_windows and test.n_windows == raw_test.n_windows
 
         backend = config.resolved_backend()
         space = config.resolved_search_space()
@@ -283,6 +297,32 @@ class ExperimentRunner:
         return window_samples, stride_samples
 
     @staticmethod
+    def _reject_overlapping_untenable(
+        dataset: SensorDataset, window_samples: int, stride_samples: int
+    ) -> None:
+        """Refuse a configuration whose splits cannot be honest.
+
+        Overlapping windows without group identifiers are split window-by-window,
+        so two windows sharing most of their samples can land on opposite sides
+        of the train/test boundary.  The resulting accuracy would be measured
+        largely on training data.  With groups the split is made at group level
+        and overlapping windows stay together, so overlap is safe.
+        """
+        if stride_samples >= window_samples:
+            return
+        if dataset.groups is not None:
+            return
+        overlap = 1.0 - stride_samples / window_samples
+        raise ConfigurationError(
+            "Overlapping windows (stride "
+            f"{stride_samples} < window {window_samples} samples, {overlap:.0%} overlap) "
+            "require group identifiers: without them adjacent windows can land in "
+            "different splits, which leaks training samples into the test set. "
+            "Supply `groups` (one id per recording/trial), or use a stride equal to "
+            "the window length for non-overlapping windows."
+        )
+
+    @staticmethod
     def _strategy(config: OptimizeConfig) -> SearchStrategy:
         kwargs: dict[str, Any] = {}
         if config.optimizer.lower() == "grid":
@@ -312,8 +352,12 @@ class ExperimentRunner:
         train_spikes = encoder.transform_windows(train)
         test_spikes = encoder.transform_windows(test)
 
+        # Every reported number comes from the SAME split (test) so that the
+        # headline trade-off — accuracy against spike budget — compares like
+        # with like.  Measuring spikes on train while reporting accuracy on
+        # test would make the two axes describe different data.
         losses: list[float] = []
-        for spikes, window in zip(train_spikes, train.samples, strict=False):
+        for spikes, window in zip(test_spikes, test.samples, strict=False):
             loss = encoder.information_loss(spikes, window)
             if loss is not None and np.isfinite(loss):
                 losses.append(float(loss))
@@ -327,7 +371,7 @@ class ExperimentRunner:
             seed=config.seed,
         )
         stats = compute_spike_stats(
-            train_spikes,
+            test_spikes,
             information_loss=information_loss,
             reconstruction_r2=1.0 - information_loss,
         )

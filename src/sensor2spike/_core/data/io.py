@@ -347,6 +347,41 @@ def save_spike_train(spikes: SpikeTrain, path: str | Path) -> Path:
     return path
 
 
+def export_event_frames(
+    spikes: SpikeTrain,
+    path: str | Path,
+    *,
+    frame_ms: float | None = None,
+) -> Path:
+    """Write a spike train as binary event frames for a neuromorphic target.
+
+    Neuromorphic processors consume input as an ``(time_steps, n_neurons)``
+    binary matrix — the same shape :class:`SpikeTrain` already holds.  This
+    writes that matrix in the plain, framework-agnostic form that a compiler or
+    simulator can ingest: a ``.npz`` with ``frames``, ``dt`` and the channel
+    names, plus a JSON sidecar describing the encoding that produced it.
+
+    The file is deliberately unopinionated: it carries no Innatera-specific
+    format, because the transfer function of a given silicon target is supplied
+    by that target's own SDK.  What this fixes is the *representation* — spikes,
+    space and time — so a toolchain is not left guessing how the data was made.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frames = spikes.spikes.astype(np.uint8)
+    dt = float(spikes.dt if frame_ms is None else frame_ms / 1000.0)
+
+    np.savez_compressed(
+        path,
+        frames=frames,
+        dt=np.float64(dt),
+        channel_names=np.asarray(spikes.channel_names, dtype="U64"),
+        encoder=np.asarray("" if spikes.encoder is None else spikes.encoder),
+        metadata_json=np.asarray(json.dumps(spikes.metadata, sort_keys=True, default=str)),
+    )
+    return path
+
+
 def load_spike_train(path: str | Path) -> SpikeTrain:
     """Load a spike train written by :func:`save_spike_train`."""
     path = Path(path)
