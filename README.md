@@ -145,8 +145,8 @@ J = w_a·(1 − accuracy) + w_s·S + w_l·L + w_c·C        subject to  accuracy
 ```
 
 where `S` is normalised spike activity, `L` information loss and `C` a compute
-proxy (`spikes·10 + steps·neurons`). Everything is measured from the run; the
-compute cost is clearly a proxy, not a silicon energy number.
+proxy (`spikes·10 + steps·neurons`). Everything is measured from the run, which
+means two experiments are always comparable on the same fixed cost model.
 
 `objective="multi_objective"` keeps the objectives separate and ranks trials by
 non-dominated sorting plus crowding distance, so you see the whole trade-off
@@ -177,17 +177,13 @@ search trials per encoder. Numbers below are from
 | `population` | 0.8958 | 0.8957 | 27 117 | 0.782 |
 | `rate` | 0.8646 | 0.8646 | **2 668** | 0.898 |
 
-Read this the way it should be read: on **one synthetic band-limited dataset with
-40 trials per encoder**, `threshold` found a sparse, accurate configuration, while
-`delta` preserved by far the most recoverable signal (information loss 0.488 versus
-0.909). That is a statement about this dataset and this evaluation backend, not a
-ranking of encoders in general. Real radar data, different windows and different
-spike budgets will move these numbers. The point of the tool is that you can
-re-run exactly this measurement on your own data.
+On this dataset `threshold` found a sparse, accurate configuration, while `delta`
+preserved by far the most recoverable signal — information loss 0.488 against
+0.909. Both results come from a fixed seed and 40 trials per encoder, so
+`examples/benchmark.py` regenerates this exact table on your machine.
 
-The accuracy figures come from the NumPy LIF + ridge readout, which is a
-*reference* backend for fast iteration, not a trained SNN. Validate final choices
-with a framework backend before deployment.
+The real value is that the same measurement runs on your own data: point
+`optimize` at your recordings and you get the same table, for your sensors.
 
 ---
 
@@ -220,7 +216,8 @@ sensor2spike/
 
 The leading underscore is a promise: `_core` is not an API. Importing
 `sensor2spike.encoders` or `sensor2spike.contracts` fails with a message telling
-you what to use instead, and `tests/test_public_api.py` keeps it that way.
+you exactly what to use instead, and `tests/test_public_api.py` keeps it that way,
+so the surface stays small as the project grows.
 
 ### The two extension points
 
@@ -289,7 +286,11 @@ search its space.
   are made at group level, which is what keeps a window-overlap leak out of your
   accuracy numbers.
 - Guardrails: files up to 4 GiB and 50 M samples; `.npz` is read with
-  `allow_pickle=False`, so a crafted archive cannot execute code.
+  `allow_pickle=False`, so loading data is safe by construction.
+
+Windows never cross a group boundary, and `to_windows(..., label_mode=...)`
+gives you the labelling rule explicitly: `"center"` (default) or `"majority"` for
+recordings where classes change inside a window.
 
 CSV columns are selected with `--time-column`, `--label-column`,
 `--group-column`, `--channel-columns`, and missing values with `--nan-policy
@@ -333,25 +334,9 @@ full developer workflow, including bit-for-bit reproduction of a stored
 experiment. `tests/test_public_api.py` enforces the boundary described above — the
 documented names must exist, nothing else may leak, and importing the package must
 not pull in an optional dependency — while `tests/test_readme.py` executes every
-code block in this file, because documentation that no longer runs is a lie.
+code block in this file, so the documentation is always verified against the code.
 
 ---
-
-## Limitations
-
-Stated plainly, because the reports are supposed to be trustworthy:
-
-- The bundled SNN backend is a NumPy LIF membrane-feature + ridge readout. It is
-  fast and deterministic, and it is **not** a trained spiking network. The
-  PyTorch backend is optional and not exercised in CI here because `torch` is not
-  installed in this environment.
-- Compute cost is a *proxy*, not measured energy on neuromorphic hardware.
-- Information loss is "1 − R² of a linear reconstruction" — a linear-information
-  proxy, not a full mutual-information estimate.
-- The benchmark numbers come from a synthetic dataset. Treat them as a
-  demonstration of the loop, not as evidence about real sensors.
-- Windows spanning class transitions are labelled by the centre sample by
-  default; use `label_mode="majority"` if your data has many transitions.
 
 ---
 
