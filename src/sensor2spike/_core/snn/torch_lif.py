@@ -61,6 +61,7 @@ class TorchLIFBackend(SNNBackend):
         if self.hidden <= 0 or self.epochs <= 0 or self.batch_size <= 0:
             raise ConfigurationError("hidden, epochs and batch_size must be positive.")
         self._model: Any = None
+        self._dt_seconds: float = 0.001
         self._torch: Any = None
 
     # ------------------------------------------------------------------ features
@@ -73,11 +74,24 @@ class TorchLIFBackend(SNNBackend):
         return matrix
 
     def features(self, spikes: Sequence[SpikeTrain]) -> np.ndarray:
-        """Return a stacked ``(n_samples, n_steps, n_features)`` tensor."""
+        """Return a stacked ``(n_samples, n_steps, n_features)`` tensor.
+
+        The membrane time constant depends on how long each step lasts, so the
+        timestep is recorded here and consumed when the model is built.  Spike
+        trains with different timesteps cannot share one recurrence.
+        """
+        if not spikes:
+            raise EvaluationError("Cannot extract features from an empty sequence.")
         matrices = [np.asarray(self._features(train), dtype=np.float32) for train in spikes]
         shapes = {matrix.shape for matrix in matrices}
         if len(shapes) != 1:
             raise EvaluationError("All spike trains must share the same pooled shape.")
+        steps = {float(train.dt) for train in spikes}
+        if len(steps) != 1:
+            raise EvaluationError(
+                f"All spike trains must share one timestep; got {sorted(steps)} seconds."
+            )
+        self._dt_seconds = steps.pop()
         return np.stack(matrices)
 
     # ------------------------------------------------------------------ torch plumbing
@@ -120,7 +134,12 @@ class TorchLIFBackend(SNNBackend):
                     output = output + self.readout(spikes)
                 return output / float(inputs.shape[1])
 
-        self._model = _LIFNet(n_inputs, self.hidden, n_classes, decay=math.exp(-0.001 / (self.tau_ms / 1000.0)))
+        # Decay follows the actual timestep of the spike trains, not a fixed
+        # 1 ms assumption: a 5 ms frame must leak five times faster than a
+        # 1 ms frame for the membrane time constant to stay the same.
+        dt_seconds = getattr(self, "_dt_seconds", 0.001)
+        decay = math.exp(-dt_seconds / (self.tau_ms / 1000.0))
+        self._model = _LIFNet(n_inputs, self.hidden, n_classes, decay=decay)
 
     def _to_tensor(self, features: np.ndarray) -> Any:
         torch = self._torch

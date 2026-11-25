@@ -16,7 +16,9 @@ need evidence for choosing an encoding instead of a hunch.
   (sigma-delta) modulation and population coding.
 - Multi-objective search (accuracy, spike count, information loss, compute cost)
   with Pareto ranking — not a single opaque score.
-- Pluggable SNN backends; a NumPy LIF reference ships in the box.
+- Three SNN backends: a closed-form ridge readout for speed, a **surrogate-gradient
+  network trained by backpropagation** in pure NumPy (so real training runs in CI),
+  and an optional PyTorch version.
 - Every experiment is recorded in SQLite with enough metadata to reproduce it.
 - Reports as JSON/CSV/Markdown/HTML with accuracy-vs-spike-count and Pareto plots.
 - Python SDK, CLI and an optional Streamlit UI.
@@ -278,6 +280,64 @@ this, including a custom `decode`.
 
 `sensor2spike encoders` now lists it and `AutoTuner(encoder="my_encoder")` will
 search its space.
+
+---
+
+## Training and temporal comparison
+
+Two backends sit behind the same `SNNBackend` contract:
+
+| Backend | What it does | Trains? | Runs in CI |
+|---|---|---|---|
+| `lif_ridge` | LIF membrane features + closed-form ridge solve | no — one linear solve | yes |
+| `numpy_sgd` | LIF recurrence trained by surrogate-gradient backprop | **yes — Adam, mini-batches** | **yes** |
+| `torch_lif` | Same idea in PyTorch | yes | no (torch not installed) |
+
+`lif_ridge` is fast and appears in the optimiser's inner loop. `numpy_sgd` is the
+honest one: a real recurrent network whose spike nonlinearity is differentiated
+with a surrogate, gradients propagated by hand through the unrolled recurrence,
+weights updated with Adam. It exists in NumPy specifically so continuous
+integration exercises genuine training on every commit — the PyTorch backend
+implements the same idea but cannot be verified without a torch install.
+
+### What can and cannot be tested about a surrogate gradient
+
+A hard threshold has zero derivative almost everywhere, so **finite differences
+return exactly `0.0` and can never validate a spiking network**. Attempting it
+looks like a bug in the backward pass and is not. What `tests/test_snn_training.py`
+checks instead:
+
+- the surrogate is the exact derivative of the smooth sigmoid proxy it claims to be;
+- it peaks at the threshold and decays away from it;
+- a saturated neuron is genuinely insensitive, which is why finite differences fail
+  (`test_hard_threshold_has_no_numeric_gradient` documents this);
+- gradient descent **reduces the loss**, and the network learns a separable task
+  (0.50 → 0.95 on a toy dataset);
+- neurons actually fire — a silent recurrence trains nothing, and that failure
+  mode did occur here before it was caught.
+
+### Comparing encoders on time, not just accuracy
+
+`examples/temporal_comparison.py` scores every encoder on temporal behaviour:
+
+```bash
+python examples/temporal_comparison.py --out results/
+```
+
+| encoder | first spike (ms) | sparsity | events / window | SNN accuracy | info preserved |
+|---|---|---|---|---|---|
+| `latency` | 0.00 | 90.0% | 320 | **1.000** | 0.431 |
+| `delta` | 0.09 | 84.7% | 61 | 0.981 | **0.592** |
+| `threshold` | 5.34 | 90.0% | **20** | 0.887 | 0.154 |
+| `rate` | 14.84 | 76.2% | 48 | 0.688 | 0.163 |
+| `population` | 5.00 | 56.0% | 1 410 | 0.669 | 0.320 |
+
+The finding, which is the reason this comparison exists: **rate coding is the
+weakest input for a spiking network here** — 0.688 against 1.000 for latency
+coding — because it discards the temporal structure the recurrence is built to
+exploit. Rate coding is not a bad encoder; it is a bad match for *this* backend.
+That is precisely the kind of mismatch a tool should surface rather than hide
+behind a single accuracy number.
 
 ---
 

@@ -85,6 +85,7 @@ from ._measurement import (
     ExperimentRegistry,
     ExperimentRunner,
     LIFRidgeBackend,
+    NumpySGDBackend,
     ObjectiveWeights,
     OptimizeConfig,
     SNNBackend,
@@ -136,6 +137,7 @@ __all__ = [
     # Measurement
     "SNNBackend",
     "LIFRidgeBackend",
+    "NumpySGDBackend",
     "TorchLIFBackend",
     "build_backend",
     "list_backends",

@@ -3,6 +3,7 @@
 from .snn import (
     BACKENDS,
     LIFRidgeBackend,
+    NumpySGDBackend,
     SNNBackend,
     TorchLIFBackend,
     build_backend,
@@ -14,6 +15,7 @@ from .snn import (
 __all__ = [
     "SNNBackend",
     "LIFRidgeBackend",
+    "NumpySGDBackend",
     "TorchLIFBackend",
     "BACKENDS",
     "build_backend",

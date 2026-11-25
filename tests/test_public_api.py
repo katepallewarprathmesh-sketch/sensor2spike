@@ -40,6 +40,7 @@ DOCUMENTED = {
     # Measurement
     "SNNBackend",
     "LIFRidgeBackend",
+    "NumpySGDBackend",
     "TorchLIFBackend",
     "build_backend",
     "list_backends",

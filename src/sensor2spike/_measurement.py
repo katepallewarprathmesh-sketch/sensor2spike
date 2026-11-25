@@ -16,6 +16,7 @@ from ._core._optimization import AutoTuner, ObjectiveWeights, OptimizeConfig
 from ._core._reporting import export_config, export_result, generate_report
 from ._core._snn import (
     LIFRidgeBackend,
+    NumpySGDBackend,
     SNNBackend,
     TorchLIFBackend,
     build_backend,
@@ -26,6 +27,7 @@ from ._core._snn import (
 __all__ = [
     "SNNBackend",
     "LIFRidgeBackend",
+    "NumpySGDBackend",
     "TorchLIFBackend",
     "build_backend",
     "list_backends",
